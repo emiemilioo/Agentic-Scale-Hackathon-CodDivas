@@ -22,3 +22,8 @@ def test_unknown_question_abstains_instead_of_inventing():
     assert result["requires_human"] is True
     assert "No encontré" in result["answer"]
 
+
+def test_document_difference_is_detected():
+    result = answer_support("Hay una diferencia en mi estado de cuenta y un documento faltante")
+    assert result["case_type"] == "document_issue"
+    assert result["priority"] == "MEDIUM"

@@ -39,4 +39,8 @@ export const api = {
     method: "POST",
     body: JSON.stringify({ ...ticket, confirmed: true }),
   }),
+  updateTicketStatus: (ticketId, status) => request(`/api/tickets/${ticketId}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  }),
 };

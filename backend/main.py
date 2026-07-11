@@ -14,6 +14,7 @@ from backend.api_schemas import (
     BudgetResponse,
     SupportRequest,
     TicketRequest,
+    TicketStatusRequest,
 )
 from services.budgets import initialize_budgets, list_budgets, save_budget
 from services.transactions import (
@@ -23,7 +24,7 @@ from services.transactions import (
     total_expenses,
 )
 from services.validation import validate_expense
-from services.support import answer_support, create_ticket, initialize_tickets, list_tickets
+from services.support import answer_support, create_ticket, initialize_tickets, list_tickets, update_ticket_status
 
 app = FastAPI(
     title="Saldo Claro API",
@@ -135,3 +136,14 @@ def ticket(payload: TicketRequest) -> dict:
 @app.get("/api/tickets")
 def tickets() -> list[dict]:
     return list_tickets()
+
+
+@app.patch("/api/tickets/{ticket_id}/status")
+def change_ticket_status(ticket_id: int, payload: TicketStatusRequest) -> dict:
+    try:
+        updated = update_ticket_status(ticket_id, payload.status)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Ticket no encontrado.")
+    return updated

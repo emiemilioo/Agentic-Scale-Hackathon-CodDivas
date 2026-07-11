@@ -10,6 +10,13 @@ SENSITIVE_TERMS = {
     "complaint": ("reclamo", "denuncia", "queja"),
     "block": ("bloquear", "bloqueo", "bloqueen"),
     "regulatory": ("regulatorio", "superintendencia", "lavado", "cumplimiento"),
+    "account_access": ("no puedo entrar", "no puedo acceder", "acceso a mi cuenta", "clave bloqueada"),
+    "document_issue": ("documento incorrecto", "documento faltante", "estado de cuenta incorrecto", "diferencia en mi estado"),
+}
+
+PRIORITIES = {
+    "fraud": "HIGH", "block": "HIGH", "regulatory": "HIGH",
+    "complaint": "MEDIUM", "account_access": "MEDIUM", "document_issue": "MEDIUM",
 }
 
 
@@ -39,7 +46,10 @@ def answer_support(query: str) -> dict:
             "answer": "Detecté que este caso necesita atención humana. No realizaré bloqueos ni cambios financieros. Puedo crear un ticket con el contexto para que una persona lo revise.",
             "requires_human": True,
             "case_type": detected[0],
-            "priority": "HIGH" if "fraud" in detected or "block" in detected else "MEDIUM",
+            "priority": max(
+                (PRIORITIES[kind] for kind in detected),
+                key=lambda priority: {"LOW": 1, "MEDIUM": 2, "HIGH": 3}[priority],
+            ),
             "sources": ["KB-002 · Operaciones no reconocidas · v1.0"],
         }
     knowledge = json.loads(KB_PATH.read_text(encoding="utf-8"))
@@ -83,3 +93,14 @@ def list_tickets() -> list[dict]:
     with connect() as connection:
         rows = connection.execute("SELECT * FROM tickets ORDER BY id DESC").fetchall()
     return [dict(row) for row in rows]
+
+
+def update_ticket_status(ticket_id: int, status: str) -> dict | None:
+    if status not in {"ESCALATED", "IN_REVIEW", "CLOSED"}:
+        raise ValueError("Estado de ticket no permitido.")
+    with connect() as connection:
+        cursor = connection.execute("UPDATE tickets SET status = ? WHERE id = ?", (status, ticket_id))
+        if cursor.rowcount == 0:
+            return None
+        row = connection.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,)).fetchone()
+    return dict(row)

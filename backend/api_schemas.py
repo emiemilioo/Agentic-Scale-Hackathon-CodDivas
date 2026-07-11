@@ -52,3 +52,7 @@ class TicketRequest(BaseModel):
     history: str = Field(min_length=3)
     priority: str
     confirmed: bool
+
+
+class TicketStatusRequest(BaseModel):
+    status: str = Field(pattern=r"^(ESCALATED|IN_REVIEW|CLOSED)$")

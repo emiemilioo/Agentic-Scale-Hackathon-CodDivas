@@ -31,11 +31,13 @@ function App() {
   const [merchantCorrection, setMerchantCorrection] = useState("");
   const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [ticketFilter, setTicketFilter] = useState("ALL");
   const [waMessage, setWaMessage] = useState("");
   const [waDraft, setWaDraft] = useState(null);
   const [waMessages, setWaMessages] = useState([
     { role: "agent", text: "Hola, soy Saldo Claro. Cuéntame un gasto y lo revisaré antes de registrarlo." },
   ]);
+  const [waLinkNotice, setWaLinkNotice] = useState(false);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -165,6 +167,18 @@ function App() {
     }
   };
 
+  const changeTicketStatus = async (status) => {
+    try {
+      const updated = await api.updateTicketStatus(selectedTicket.id, status);
+      setSelectedTicket(updated);
+      await refresh();
+    } catch (error) { setStatus(error.message); }
+  };
+
+  const visibleTickets = ticketFilter === "ALL"
+    ? tickets
+    : tickets.filter((ticket) => ticket.status === ticketFilter);
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -172,7 +186,7 @@ function App() {
         <nav>
           <button className={activeView === "home" ? "active" : ""} onClick={() => setActiveView("home")}><LayoutDashboard size={18}/> Mi espacio</button>
           <button className={activeView === "budgets" ? "active" : ""} onClick={() => setActiveView("budgets")}><WalletCards size={18}/> Presupuestos</button>
-          <button className={activeView === "whatsapp" ? "active" : ""} onClick={() => setActiveView("whatsapp")}><MessageCircle size={18}/> WhatsApp demo</button>
+          <button className={activeView === "whatsapp" ? "active" : ""} onClick={() => setActiveView("whatsapp")}><MessageCircle size={18}/> WhatsApp</button>
           <button className={activeView === "support" ? "active" : ""} onClick={() => setActiveView("support")}><ShieldCheck size={18}/> Soporte</button>
           <button className={activeView === "tickets" ? "active" : ""} onClick={() => setActiveView("tickets")}><TicketCheck size={18}/> Tickets <span className="nav-count">{tickets.length}</span></button>
         </nav>
@@ -257,7 +271,15 @@ function App() {
             <form className="support-form" onSubmit={askSupport}>
               <label htmlFor="support-message">Pregunta sobre tu cuenta, procesos o documentos</label>
               <textarea id="support-message" value={supportMessage} onChange={(e) => setSupportMessage(e.target.value)} placeholder="Ejemplo: No reconozco una operación de $320 y quiero reclamar." />
-              <div><button type="button" onClick={() => setSupportMessage("¿Qué documentos necesito para actualizar mis datos?")}>Pregunta informativa</button><button type="button" onClick={() => setSupportMessage("No reconozco una operación de $320 y quiero reclamar.")}>Caso sensible</button><button className="primary" type="submit">Consultar soporte</button></div>
+              <div className="support-examples">
+                <button type="button" onClick={() => setSupportMessage("¿Qué documentos necesito para actualizar mis datos?")}>Información</button>
+                <button type="button" onClick={() => setSupportMessage("No reconozco una operación de $320. Puede ser fraude.")}>Fraude</button>
+                <button type="button" onClick={() => setSupportMessage("Mi clave está bloqueada y no puedo acceder a mi cuenta.")}>Acceso bloqueado</button>
+                <button type="button" onClick={() => setSupportMessage("Quiero presentar un reclamo formal por un cobro incorrecto.")}>Reclamo</button>
+                <button type="button" onClick={() => setSupportMessage("Tengo una solicitud regulatoria de cumplimiento.")}>Regulatorio</button>
+                <button type="button" onClick={() => setSupportMessage("Hay una diferencia en mi estado de cuenta y un documento faltante.")}>Documentos</button>
+                <button className="primary" type="submit">Consultar soporte</button>
+              </div>
             </form>
             <div className="support-response">
               {!supportResult && <div className="support-empty"><Bot size={26}/><span>La respuesta aparecerá aquí con su fuente o ruta de escalamiento.</span></div>}
@@ -273,7 +295,8 @@ function App() {
         </section>}
 
         {activeView === "whatsapp" && <section className="whatsapp-section">
-          <div className="channel-heading"><div><span className="whatsapp-logo"><MessageCircle size={22}/></span><div><p className="eyebrow">CANAL MASIVO SIMULADO</p><h2>WhatsApp Demo</h2></div></div><span className="simulation-badge">Simulación para hackathon</span></div>
+          <div className="channel-heading"><div><span className="whatsapp-logo"><MessageCircle size={22}/></span><div><p className="eyebrow">CANAL MASIVO</p><h2>WhatsApp</h2></div></div><button className="link-whatsapp" onClick={() => setWaLinkNotice(!waLinkNotice)}><MessageCircle size={16}/>Vincular WhatsApp Business</button></div>
+          {waLinkNotice && <div className="whatsapp-link-panel"><div><b>Conexión preparada para producción</b><span>La versión real requiere un número de WhatsApp Business, token de Meta y un webhook público. Para la hackathon usamos el simulador funcional permitido por las reglas.</span></div><button onClick={() => window.open("https://developers.facebook.com/docs/whatsapp/cloud-api/get-started", "_blank")}>Ver requisitos oficiales</button></div>}
           <div className="phone-shell">
             <div className="phone-header"><div className="wa-avatar">S</div><div><b>Saldo Claro</b><span>Agente financiero · en línea</span></div></div>
             <div className="wa-chat">
@@ -290,12 +313,14 @@ function App() {
 
         {activeView === "tickets" && <section className="tickets-section">
           <div className="section-title"><div><p className="eyebrow">ESCALAMIENTO HUMANO</p><h2>Bandeja de tickets</h2></div><span className="approved-badge"><TicketCheck size={15}/>{tickets.length} casos</span></div>
+          <div className="ticket-filters">{[["ALL","Todos"],["ESCALATED","Escalados"],["IN_REVIEW","En revisión"],["CLOSED","Cerrados"]].map(([value,label]) => <button key={value} className={ticketFilter === value ? "active" : ""} onClick={() => setTicketFilter(value)}>{label}</button>)}</div>
           {tickets.length === 0 ? <div className="ticket-empty"><TicketCheck size={28}/><b>No hay tickets todavía</b><span>Crea un caso sensible desde Soporte para probar el escalamiento.</span><button onClick={() => setActiveView("support")}>Ir a soporte</button></div> : <div className="tickets-layout">
-            <div className="ticket-list">{tickets.map((ticket) => <button key={ticket.id} className={selectedTicket?.id === ticket.id ? "selected" : ""} onClick={() => setSelectedTicket(ticket)}><div><b>Ticket #{ticket.id}</b><span>{ticket.summary}</span></div><div><em className={`priority ${ticket.priority.toLowerCase()}`}>{ticket.priority}</em><small>{ticket.status}</small></div></button>)}</div>
+            <div className="ticket-list">{visibleTickets.length === 0 ? <div className="filtered-empty">No hay tickets con este estado.</div> : visibleTickets.map((ticket) => <button key={ticket.id} className={selectedTicket?.id === ticket.id ? "selected" : ""} onClick={() => setSelectedTicket(ticket)}><div><b>Ticket #{ticket.id}</b><span>{ticket.summary}</span></div><div><em className={`priority ${ticket.priority.toLowerCase()}`}>{ticket.priority}</em><small>{ticket.status}</small></div></button>)}</div>
             <div className="ticket-detail">{selectedTicket ? <>
               <div className="ticket-detail-head"><div><small>CASO #{selectedTicket.id}</small><h3>{selectedTicket.summary}</h3></div><em className={`priority ${selectedTicket.priority.toLowerCase()}`}>{selectedTicket.priority}</em></div>
               <dl><div><dt>Tipo</dt><dd>{selectedTicket.case_type}</dd></div><div><dt>Estado</dt><dd>{selectedTicket.status}</dd></div><div><dt>Creado</dt><dd>{selectedTicket.created_at}</dd></div></dl>
               <h4>Historial entregado al equipo humano</h4><pre>{selectedTicket.history}</pre>
+              <div className="ticket-actions"><span>Actualizar caso:</span><button onClick={() => changeTicketStatus("ESCALATED")}>Reabrir</button><button onClick={() => changeTicketStatus("IN_REVIEW")}>En revisión</button><button className="close-ticket" onClick={() => changeTicketStatus("CLOSED")}>Cerrar ticket</button></div>
             </> : <div className="select-ticket"><TicketCheck size={28}/><span>Selecciona un ticket para revisar su contexto e historial.</span></div>}</div>
           </div>}
         </section>}
