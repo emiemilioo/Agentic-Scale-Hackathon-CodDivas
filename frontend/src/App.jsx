@@ -317,8 +317,8 @@ function App() {
         </section>}
 
         {activeView === "whatsapp" && <section className="whatsapp-section">
-          <div className="channel-heading"><div><span className="whatsapp-logo"><MessageCircle size={22}/></span><div><p className="eyebrow">CANAL MASIVO</p><h2>WhatsApp</h2></div></div><button className="link-whatsapp" onClick={() => setWaLinkNotice(!waLinkNotice)}>Integración</button></div>
-          {waLinkNotice && <div className="whatsapp-link-panel"><span>Conexión disponible mediante WhatsApp Business API y webhook.</span><button onClick={() => window.open("https://developers.facebook.com/docs/whatsapp/cloud-api/get-started", "_blank")}>Documentación</button></div>}
+          <div className="channel-heading"><div><span className="whatsapp-logo"><MessageCircle size={22}/></span><div><p className="eyebrow">CANAL MASIVO</p><h2>WhatsApp</h2></div></div><button className="link-whatsapp" onClick={() => setWaLinkNotice(!waLinkNotice)}><MessageCircle size={15}/>Vincular WhatsApp API</button></div>
+          {waLinkNotice && <div className="whatsapp-link-panel"><span>Configura un número de WhatsApp Business y el webhook del agente.</span><button onClick={() => window.open("https://developers.facebook.com/docs/whatsapp/cloud-api/get-started", "_blank")}>Configurar</button></div>}
           <div className="phone-shell">
             <div className="phone-header"><div className="wa-avatar">S</div><div><b>Saldo Claro</b><span>Agente financiero · en línea</span></div></div>
             <div className="wa-chat">
