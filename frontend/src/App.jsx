@@ -25,6 +25,7 @@ function App() {
   const [budgets, setBudgets] = useState([]);
   const [showBudgetForm, setShowBudgetForm] = useState(false);
   const [budgetForm, setBudgetForm] = useState({ category: "Alimentación", amount_limit: 100, threshold_pct: 80 });
+  const [editingBudget, setEditingBudget] = useState(null);
   const [supportMessage, setSupportMessage] = useState("");
   const [supportResult, setSupportResult] = useState(null);
   const [ticketResult, setTicketResult] = useState(null);
@@ -107,7 +108,27 @@ function App() {
     const month = new Date().toISOString().slice(0, 7);
     try {
       const result = await api.saveBudget({ ...budgetForm, month });
-      setStatus(result.message); setShowBudgetForm(false); await refresh();
+      setStatus(result.message); setShowBudgetForm(false); setEditingBudget(null); await refresh();
+    } catch (error) { setStatus(error.message); }
+  };
+
+  const editBudget = (budget) => {
+    setBudgetForm({
+      category: budget.category,
+      amount_limit: budget.amount_limit,
+      threshold_pct: budget.threshold_pct,
+    });
+    setEditingBudget(budget.id);
+    setShowBudgetForm(true);
+  };
+
+  const removeBudget = async (budget) => {
+    if (!window.confirm(`¿Eliminar el presupuesto de ${budget.category}?`)) return;
+    try {
+      const result = await api.deleteBudget(budget.id);
+      setStatus(result.message);
+      if (editingBudget === budget.id) { setEditingBudget(null); setShowBudgetForm(false); }
+      await refresh();
     } catch (error) { setStatus(error.message); }
   };
 
@@ -249,12 +270,12 @@ function App() {
         </section>}
 
         {activeView === "budgets" && <section className="budget-section standalone">
-          <div className="section-title"><div><p className="eyebrow">CONTROL MENSUAL</p><h2>Presupuestos y alertas</h2></div><button onClick={() => setShowBudgetForm(!showBudgetForm)}>+ Crear presupuesto</button></div>
+          <div className="section-title"><div><p className="eyebrow">CONTROL MENSUAL</p><h2>Presupuestos y alertas</h2></div><button onClick={() => { setEditingBudget(null); setBudgetForm({ category: "Alimentación", amount_limit: 100, threshold_pct: 80 }); setShowBudgetForm(!showBudgetForm); }}>+ Crear presupuesto</button></div>
           {showBudgetForm && <form className="budget-form" onSubmit={saveBudget}>
             <label>Categoría<select value={budgetForm.category} onChange={(e) => setBudgetForm({...budgetForm, category: e.target.value})}>{categories.map((c) => <option key={c}>{c}</option>)}</select></label>
             <label>Límite mensual ($)<input type="number" min="1" step="0.01" value={budgetForm.amount_limit} onChange={(e) => setBudgetForm({...budgetForm, amount_limit: Number(e.target.value)})}/></label>
             <label>Alertar al (%)<input type="number" min="50" max="100" value={budgetForm.threshold_pct} onChange={(e) => setBudgetForm({...budgetForm, threshold_pct: Number(e.target.value)})}/></label>
-            <button type="submit">Guardar presupuesto</button>
+            <button type="submit">{editingBudget ? "Guardar cambios" : "Guardar presupuesto"}</button>
           </form>}
           {budgets.length === 0 ? <div className="budget-empty"><Gauge size={24}/><span>Crea un presupuesto para recibir alertas basadas en tus gastos reales.</span></div> : <div className="budget-grid">{budgets.map((budget) => <article className={`budget-card ${budget.status}`} key={budget.id}>
             <div className="budget-top"><div><b>{budget.category}</b><span>${budget.spent.toFixed(2)} de ${budget.amount_limit.toFixed(2)}</span></div>{budget.status !== "ok" && <AlertTriangle size={20}/>}</div>
@@ -262,6 +283,7 @@ function App() {
             <div className="budget-meta"><span>{budget.percentage}% utilizado</span><span>Alerta: {budget.threshold_pct}%</span></div>
             {budget.status === "warning" && <p className="budget-alert">Has usado ${budget.spent.toFixed(2)} de ${budget.amount_limit.toFixed(2)}. Superaste tu umbral de ${budget.threshold_amount.toFixed(2)}.</p>}
             {budget.status === "exceeded" && <p className="budget-alert">Excediste este presupuesto por ${(budget.spent - budget.amount_limit).toFixed(2)}.</p>}
+            <div className="budget-actions"><button onClick={() => editBudget(budget)}>Editar</button><button className="delete-budget" onClick={() => removeBudget(budget)}>Eliminar</button></div>
           </article>)}</div>}
         </section>}
 
@@ -295,8 +317,8 @@ function App() {
         </section>}
 
         {activeView === "whatsapp" && <section className="whatsapp-section">
-          <div className="channel-heading"><div><span className="whatsapp-logo"><MessageCircle size={22}/></span><div><p className="eyebrow">CANAL MASIVO</p><h2>WhatsApp</h2></div></div><button className="link-whatsapp" onClick={() => setWaLinkNotice(!waLinkNotice)}><MessageCircle size={16}/>Vincular WhatsApp Business</button></div>
-          {waLinkNotice && <div className="whatsapp-link-panel"><div><b>Conexión preparada para producción</b><span>La versión real requiere un número de WhatsApp Business, token de Meta y un webhook público. Para la hackathon usamos el simulador funcional permitido por las reglas.</span></div><button onClick={() => window.open("https://developers.facebook.com/docs/whatsapp/cloud-api/get-started", "_blank")}>Ver requisitos oficiales</button></div>}
+          <div className="channel-heading"><div><span className="whatsapp-logo"><MessageCircle size={22}/></span><div><p className="eyebrow">CANAL MASIVO</p><h2>WhatsApp</h2></div></div><button className="link-whatsapp" onClick={() => setWaLinkNotice(!waLinkNotice)}>Integración</button></div>
+          {waLinkNotice && <div className="whatsapp-link-panel"><span>Conexión disponible mediante WhatsApp Business API y webhook.</span><button onClick={() => window.open("https://developers.facebook.com/docs/whatsapp/cloud-api/get-started", "_blank")}>Documentación</button></div>}
           <div className="phone-shell">
             <div className="phone-header"><div className="wa-avatar">S</div><div><b>Saldo Claro</b><span>Agente financiero · en línea</span></div></div>
             <div className="wa-chat">

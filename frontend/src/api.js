@@ -31,6 +31,7 @@ export const api = {
     method: "POST",
     body: JSON.stringify(budget),
   }),
+  deleteBudget: (budgetId) => request(`/api/budgets/${budgetId}`, { method: "DELETE" }),
   support: (message) => request("/api/support", {
     method: "POST",
     body: JSON.stringify({ message }),

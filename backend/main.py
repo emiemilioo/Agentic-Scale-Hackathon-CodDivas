@@ -16,7 +16,7 @@ from backend.api_schemas import (
     TicketRequest,
     TicketStatusRequest,
 )
-from services.budgets import initialize_budgets, list_budgets, save_budget
+from services.budgets import delete_budget, initialize_budgets, list_budgets, save_budget
 from services.transactions import (
     initialize_database,
     list_expenses,
@@ -119,6 +119,13 @@ def create_or_update_budget(payload: BudgetRequest) -> BudgetResponse:
 @app.get("/api/budgets")
 def budgets(month: str | None = None) -> list[dict]:
     return list_budgets(month)
+
+
+@app.delete("/api/budgets/{budget_id}")
+def remove_budget(budget_id: int) -> dict:
+    if not delete_budget(budget_id):
+        raise HTTPException(status_code=404, detail="Presupuesto no encontrado.")
+    return {"message": "Presupuesto eliminado correctamente."}
 
 
 @app.post("/api/support")

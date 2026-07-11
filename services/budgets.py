@@ -77,3 +77,9 @@ def list_budgets(month: str | None = None) -> list[dict]:
         item.update(evaluate_budget(item["spent"], item["amount_limit"], item["threshold_pct"]))
         result.append(item)
     return result
+
+
+def delete_budget(budget_id: int) -> bool:
+    with connect() as connection:
+        cursor = connection.execute("DELETE FROM budgets WHERE id = ?", (budget_id,))
+    return cursor.rowcount > 0
