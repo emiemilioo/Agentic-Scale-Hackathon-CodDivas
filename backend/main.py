@@ -10,6 +10,7 @@ from backend.api_schemas import (
     InterpretRequest,
     InterpretResponse,
     SummaryResponse,
+    IncomeRequest,
     BudgetRequest,
     BudgetResponse,
     SupportRequest,
@@ -22,6 +23,8 @@ from services.transactions import (
     list_expenses,
     register_expense,
     total_expenses,
+    get_monthly_income,
+    set_monthly_income,
 )
 from services.validation import validate_expense
 from services.support import answer_support, create_ticket, initialize_tickets, list_tickets, update_ticket_status
@@ -99,13 +102,19 @@ def transactions() -> list[dict]:
 def summary() -> SummaryResponse:
     expenses = total_expenses()
     transactions = list_expenses()
-    demo_income = 1000.0
+    income = get_monthly_income()
     return SummaryResponse(
-        income=demo_income,
+        income=income,
         expenses=expenses,
-        balance=demo_income - expenses,
+        balance=income - expenses,
         transaction_count=len(transactions),
     )
+
+
+@app.patch("/api/settings/income", response_model=SummaryResponse)
+def update_income(payload: IncomeRequest) -> SummaryResponse:
+    set_monthly_income(payload.amount)
+    return summary()
 
 
 @app.post("/api/budgets", response_model=BudgetResponse)

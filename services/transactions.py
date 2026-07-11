@@ -28,6 +28,17 @@ def initialize_database() -> None:
             )
             """
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value REAL NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            "INSERT OR IGNORE INTO settings(key, value) VALUES ('monthly_income', 1000.0)"
+        )
 
 
 def register_expense(draft: ExpenseDraft) -> int:
@@ -64,3 +75,22 @@ def total_expenses() -> float:
         row = connection.execute("SELECT COALESCE(SUM(amount), 0) AS total FROM transactions").fetchone()
     return float(row["total"])
 
+
+def get_monthly_income() -> float:
+    with connect() as connection:
+        row = connection.execute(
+            "SELECT value FROM settings WHERE key = 'monthly_income'"
+        ).fetchone()
+    return float(row["value"]) if row else 1000.0
+
+
+def set_monthly_income(amount: float) -> float:
+    with connect() as connection:
+        connection.execute(
+            """
+            INSERT INTO settings(key, value) VALUES ('monthly_income', ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """,
+            (amount,),
+        )
+    return amount

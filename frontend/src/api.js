@@ -16,6 +16,10 @@ async function request(path, options = {}) {
 export const api = {
   health: () => request("/api/health"),
   summary: () => request("/api/summary"),
+  updateIncome: (amount) => request("/api/settings/income", {
+    method: "PATCH",
+    body: JSON.stringify({ amount }),
+  }),
   transactions: () => request("/api/transactions"),
   budgets: () => request("/api/budgets"),
   tickets: () => request("/api/tickets"),

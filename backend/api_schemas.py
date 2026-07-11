@@ -30,6 +30,10 @@ class SummaryResponse(BaseModel):
     transaction_count: int
 
 
+class IncomeRequest(BaseModel):
+    amount: float = Field(ge=0, le=100000000)
+
+
 class BudgetRequest(BaseModel):
     category: str
     month: str = Field(pattern=r"^\d{4}-\d{2}$")

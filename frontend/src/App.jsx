@@ -1,15 +1,16 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Bot, Check, CircleDollarSign, Gauge, LayoutDashboard, MessageCircle, Send, ShieldCheck, Sparkles, TicketCheck, WalletCards, X } from "lucide-react";
+import { AlertTriangle, Bot, Check, CircleDollarSign, Gauge, LayoutDashboard, LoaderCircle, MessageCircle, Pencil, Send, ShieldCheck, Sparkles, TicketCheck, WalletCards, X } from "lucide-react";
 import { api } from "./api";
 
 const example = "Gasté 25 dólares en comida ayer en Mi Comisariato";
 const categories = ["Alimentación", "Transporte", "Vivienda", "Salud", "Educación", "Entretenimiento", "Servicios", "Otros"];
 
-function MoneyCard({ label, value, icon: Icon, tone = "navy" }) {
+function MoneyCard({ label, value, icon: Icon, tone = "navy", onEdit }) {
   return (
     <article className={`money-card ${tone}`}>
       <div className="icon-wrap"><Icon size={20} /></div>
       <div><span>{label}</span><strong>{value}</strong></div>
+      {onEdit && <button className="edit-metric" onClick={onEdit} aria-label={`Editar ${label}`}><Pencil size={14}/></button>}
     </article>
   );
 }
@@ -41,12 +42,17 @@ function App() {
   const [waLinkNotice, setWaLinkNotice] = useState(false);
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
+  const [interpreting, setInterpreting] = useState(false);
+  const [waLoading, setWaLoading] = useState(false);
+  const [editingIncome, setEditingIncome] = useState(false);
+  const [incomeValue, setIncomeValue] = useState(1000);
 
   const refresh = async () => {
     const [summaryData, transactionData, health, budgetData, ticketData] = await Promise.all([
       api.summary(), api.transactions(), api.health(), api.budgets(), api.tickets(),
     ]);
     setSummary(summaryData);
+    setIncomeValue(summaryData.income);
     setTransactions(transactionData);
     setMode(health.agent_mode);
     setBudgets(budgetData);
@@ -58,12 +64,12 @@ function App() {
   const interpret = async (event) => {
     event.preventDefault();
     if (!message.trim()) return;
-    setLoading(true); setStatus("");
+    setLoading(true); setInterpreting(true); setStatus("");
     try {
       const result = await api.interpret(message);
       setDraft(result.draft); setErrors(result.validation_errors); setMode(result.mode);
     } catch (error) { setStatus(error.message); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setInterpreting(false); }
   };
 
   const confirm = async () => {
@@ -71,6 +77,18 @@ function App() {
     try {
       const result = await api.confirm(draft);
       setStatus(result.message); setDraft(null); setMessage(""); await refresh();
+    } catch (error) { setStatus(error.message); }
+    finally { setLoading(false); }
+  };
+
+  const saveIncome = async (event) => {
+    event.preventDefault();
+    setLoading(true);
+    try {
+      const updated = await api.updateIncome(Number(incomeValue));
+      setSummary(updated);
+      setEditingIncome(false);
+      setStatus("Ingreso mensual actualizado.");
     } catch (error) { setStatus(error.message); }
     finally { setLoading(false); }
   };
@@ -158,6 +176,7 @@ function App() {
     if (!text) return;
     setWaMessages((current) => [...current, { role: "user", text }]);
     setWaMessage("");
+    setWaLoading(true);
     try {
       const result = await api.interpret(text);
       setWaDraft(result.draft);
@@ -174,7 +193,7 @@ function App() {
       }
     } catch (error) {
       setWaMessages((current) => [...current, { role: "agent", text: error.message }]);
-    }
+    } finally { setWaLoading(false); }
   };
 
   const confirmWhatsApp = async () => {
@@ -218,10 +237,16 @@ function App() {
         <header><div><p className="eyebrow">TU RESUMEN FINANCIERO</p><h1>Tu dinero, más claro.</h1><p>Registra un gasto como se lo contarías a una persona.</p></div><span className="mode"><span></span>{mode}</span></header>
 
         <section className="metrics">
-          <MoneyCard label="Ingresos" value={`$${summary.income.toFixed(2)}`} icon={CircleDollarSign} tone="teal" />
+          <MoneyCard label="Ingresos" value={`$${summary.income.toFixed(2)}`} icon={CircleDollarSign} tone="teal" onEdit={() => setEditingIncome(true)} />
           <MoneyCard label="Gastos" value={`$${summary.expenses.toFixed(2)}`} icon={WalletCards} tone="coral" />
           <MoneyCard label="Saldo disponible" value={`$${summary.balance.toFixed(2)}`} icon={ShieldCheck} />
         </section>
+        {editingIncome && <form className="income-editor" onSubmit={saveIncome}>
+          <div><b>Editar ingreso mensual</b><span>Este valor se usa para calcular tu saldo disponible.</span></div>
+          <label>$<input type="number" min="0" step="0.01" value={incomeValue} onChange={(event) => setIncomeValue(event.target.value)} autoFocus/></label>
+          <button className="save-income" disabled={loading}>Guardar</button>
+          <button type="button" onClick={() => { setIncomeValue(summary.income); setEditingIncome(false); }}>Cancelar</button>
+        </form>}
 
         {activeView === "home" && <section className="workspace">
           <div className="chat-panel">
@@ -229,6 +254,7 @@ function App() {
             <div className="conversation">
               <div className="bubble agent">Hola. ¿Qué movimiento quieres registrar hoy?</div>
               {message && draft && <div className="bubble user">{message}</div>}
+              {interpreting && <div className="thinking"><LoaderCircle size={18}/><div><b>Analizando con IA...</b><span>Estoy identificando monto, fecha, categoría y comercio.</span></div></div>}
               {draft && <div className="draft-card">
                 <div className="draft-title"><Sparkles size={17}/><b>Esto entendí</b><span>Borrador</span></div>
                 <div className="draft-grid">
@@ -258,7 +284,7 @@ function App() {
             </div>
             <form className="composer" onSubmit={interpret}>
               <input value={message} onChange={(e) => setMessage(e.target.value)} placeholder={example} />
-              <button aria-label="Enviar" disabled={loading}><Send size={19}/></button>
+              <button aria-label={interpreting ? "Analizando" : "Enviar"} disabled={loading}>{interpreting ? <LoaderCircle className="spin" size={19}/> : <Send size={19}/>}</button>
             </form>
             <button className="example" onClick={() => setMessage(example)}>Usar mensaje de ejemplo</button>
           </div>
@@ -323,12 +349,13 @@ function App() {
             <div className="phone-header"><div className="wa-avatar">S</div><div><b>Saldo Claro</b><span>Agente financiero · en línea</span></div></div>
             <div className="wa-chat">
               {waMessages.map((item, index) => <div key={`${item.role}-${index}`} className={`wa-bubble ${item.role}`}>{item.text}<small>{new Date().toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})}</small></div>)}
+              {waLoading && <div className="wa-bubble agent wa-thinking"><LoaderCircle className="spin" size={14}/> Saldo Claro está analizando...</div>}
               {waDraft && !waDraft.requires_clarification && <div className="wa-confirm">
                 <b>Movimiento pendiente</b><span>Gemini estructuró los datos; todavía no se ha guardado.</span>
                 <div><button onClick={confirmWhatsApp}><Check size={16}/> Confirmar</button><button onClick={() => setWaDraft(null)}><X size={16}/> Cancelar</button></div>
               </div>}
             </div>
-            <form className="wa-composer" onSubmit={askWhatsApp}><input value={waMessage} onChange={(e) => setWaMessage(e.target.value)} placeholder="Escribe un mensaje"/><button><Send size={18}/></button></form>
+            <form className="wa-composer" onSubmit={askWhatsApp}><input value={waMessage} onChange={(e) => setWaMessage(e.target.value)} placeholder="Escribe un mensaje" disabled={waLoading}/><button disabled={waLoading}>{waLoading ? <LoaderCircle className="spin" size={18}/> : <Send size={18}/>}</button></form>
           </div>
           <p className="simulation-note"><ShieldCheck size={16}/>Este canal simula la experiencia de WhatsApp. No utiliza un número real ni envía datos a Meta.</p>
         </section>}
