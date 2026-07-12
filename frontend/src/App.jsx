@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Bot, Check, CircleDollarSign, Gauge, LayoutDashboard, LoaderCircle, MessageCircle, Pencil, Send, ShieldCheck, Sparkles, TicketCheck, Trash2, WalletCards, X } from "lucide-react";
+import { AlertTriangle, Bot, Check, CircleDollarSign, Gauge, History, LayoutDashboard, LoaderCircle, MessageCircle, Pencil, Search, Send, ShieldCheck, Sparkles, TicketCheck, Trash2, WalletCards, X } from "lucide-react";
 import { api } from "./api";
 
 const example = "Gasté 25 dólares en comida ayer en Mi Comisariato";
@@ -22,6 +22,8 @@ function App() {
   const [errors, setErrors] = useState([]);
   const [summary, setSummary] = useState({ income: 1000, expenses: 0, balance: 1000, transaction_count: 0 });
   const [transactions, setTransactions] = useState([]);
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyCategory, setHistoryCategory] = useState("ALL");
   const [mode, setMode] = useState("Conectando...");
   const [budgets, setBudgets] = useState([]);
   const [showBudgetForm, setShowBudgetForm] = useState(false);
@@ -230,12 +232,24 @@ function App() {
     ? tickets
     : tickets.filter((ticket) => ticket.status === ticketFilter);
 
+  const visibleTransactions = transactions.filter((transaction) => {
+    const search = historySearch.trim().toLowerCase();
+    const matchesSearch = !search
+      || transaction.merchant.toLowerCase().includes(search)
+      || transaction.category.toLowerCase().includes(search)
+      || transaction.source_text.toLowerCase().includes(search);
+    const matchesCategory = historyCategory === "ALL" || transaction.category === historyCategory;
+    return matchesSearch && matchesCategory;
+  });
+  const visibleTransactionTotal = visibleTransactions.reduce((total, transaction) => total + transaction.amount, 0);
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand"><div className="brand-mark">S</div><div><b>Saldo Claro</b><span>Finanzas que hablan contigo</span></div></div>
         <nav>
           <button className={activeView === "home" ? "active" : ""} onClick={() => setActiveView("home")}><LayoutDashboard size={18}/> Mi espacio</button>
+          <button className={activeView === "history" ? "active" : ""} onClick={() => setActiveView("history")}><History size={18}/> Historial</button>
           <button className={activeView === "budgets" ? "active" : ""} onClick={() => setActiveView("budgets")}><WalletCards size={18}/> Presupuestos</button>
           <button className={activeView === "whatsapp" ? "active" : ""} onClick={() => setActiveView("whatsapp")}><MessageCircle size={18}/> WhatsApp</button>
           <button className={activeView === "support" ? "active" : ""} onClick={() => setActiveView("support")}><ShieldCheck size={18}/> Soporte</button>
@@ -301,9 +315,35 @@ function App() {
           </div>
 
           <div className="activity-panel">
-            <div className="activity-heading"><h2>Actividad reciente</h2><span>{summary.transaction_count} movimientos</span></div>
+            <div className="activity-heading"><h2>Actividad reciente</h2><div><span>{summary.transaction_count} movimientos</span><button onClick={() => setActiveView("history")}>Ver todas</button></div></div>
             {transactions.length === 0 ? <div className="empty"><WalletCards size={30}/><b>Aún no hay gastos</b><span>Confirma tu primer movimiento desde el chat.</span></div> : transactions.slice(0, 6).map((item) => <div className="transaction" key={item.id}><div className="merchant-avatar">{item.merchant[0]}</div><div><b>{item.merchant}</b><span>{item.category} · {item.transaction_date}</span></div><strong>-${item.amount.toFixed(2)}</strong><button className="delete-transaction" onClick={() => removeTransaction(item)} disabled={loading} aria-label={`Eliminar gasto en ${item.merchant}`} title="Eliminar movimiento"><Trash2 size={14}/></button></div>)}
           </div>
+        </section>}
+
+        {activeView === "history" && <section className="history-section">
+          <div className="section-title"><div><p className="eyebrow">REGISTRO HISTÓRICO</p><h2>Todos los movimientos</h2></div><span className="history-count"><History size={15}/>{transactions.length} registros</span></div>
+          <div className="history-summary">
+            <div><small>Movimientos visibles</small><strong>{visibleTransactions.length}</strong></div>
+            <div><small>Total gastado</small><strong>${visibleTransactionTotal.toFixed(2)}</strong></div>
+            <div><small>Periodo</small><strong>{transactions.length ? `${transactions[transactions.length - 1].transaction_date} — ${transactions[0].transaction_date}` : "Sin datos"}</strong></div>
+          </div>
+          <div className="history-tools">
+            <label className="history-search"><Search size={16}/><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Buscar comercio, categoría o descripción"/></label>
+            <select value={historyCategory} onChange={(event) => setHistoryCategory(event.target.value)} aria-label="Filtrar por categoría">
+              <option value="ALL">Todas las categorías</option>
+              {categories.map((category) => <option value={category} key={category}>{category}</option>)}
+            </select>
+          </div>
+          {visibleTransactions.length === 0 ? <div className="history-empty"><History size={28}/><b>No hay movimientos para mostrar</b><span>Cambia los filtros o registra un gasto desde Mi espacio.</span><button onClick={() => { setHistorySearch(""); setHistoryCategory("ALL"); }}>Limpiar filtros</button></div> : <div className="history-list">
+            <div className="history-list-head"><span>Movimiento</span><span>Fecha</span><span>Monto</span><span>Acción</span></div>
+            {visibleTransactions.map((item) => <article className="history-item" key={item.id}>
+              <div className="merchant-avatar">{item.merchant[0]}</div>
+              <div className="history-description"><b>{item.merchant}</b><span>{item.category}</span><small>{item.source_text}</small></div>
+              <time>{item.transaction_date}</time>
+              <strong>-${item.amount.toFixed(2)}</strong>
+              <button className="delete-transaction" onClick={() => removeTransaction(item)} disabled={loading} aria-label={`Eliminar gasto en ${item.merchant}`} title="Eliminar movimiento"><Trash2 size={14}/></button>
+            </article>)}
+          </div>}
         </section>}
 
         {activeView === "budgets" && <section className="budget-section standalone">

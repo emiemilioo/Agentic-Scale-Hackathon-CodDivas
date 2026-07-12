@@ -14,6 +14,7 @@ Proyecto del **Track 2: Interfaces Inteligentes para Finanzas Personales y Canal
 - Extraer monto, fecha, categoría y comercio.
 - Solicitar información faltante y confirmar antes de guardar.
 - Editar el ingreso, consultar el saldo y eliminar movimientos incorrectos.
+- Consultar el historial completo, buscar movimientos y filtrar por categoría.
 - Crear, editar y eliminar presupuestos con alertas configurables.
 - Responder consultas desde una base de conocimiento aprobada.
 - Detectar reclamos o casos sensibles y crear tickets para atención humana.
