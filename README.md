@@ -171,35 +171,6 @@ cd frontend
 npm run build
 ```
 
-## Flujo de trabajo del equipo
-
-No editar directamente sobre `main`. Cada integrante trabaja en una rama corta:
-
-```bash
-git switch main
-git pull origin main
-git switch -c feature/nombre-corto
-```
-
-Ejemplos:
-
-```text
-feature/login
-feature/exportar-movimientos
-fix/alerta-presupuesto
-docs/mejorar-arquitectura
-```
-
-Antes de compartir el cambio:
-
-```bash
-python -m pytest -q
-cd frontend
-npm run build
-```
-
-Después se crea un Pull Request hacia `main`. Consulta [CONTRIBUTING.md](CONTRIBUTING.md) para el proceso completo.
-
 ## Contrato frontend-backend
 
 La interfaz nunca accede directamente a SQLite ni a Gemini. Todas las acciones pasan por `frontend/src/api.js` y los endpoints de `backend/main.py`.
